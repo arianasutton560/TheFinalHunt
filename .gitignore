@@ -34,4 +34,7 @@ Thumbs.db
 *.unitypackage
 
 # Addressables
-/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*.vscode/
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# VS Code
+.vscode/
