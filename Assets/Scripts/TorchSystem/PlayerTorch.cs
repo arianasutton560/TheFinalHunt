@@ -1,12 +1,14 @@
 
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 public class PlayerTorch : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private WendigoAtmosphere atmosphere;
     [SerializeField] private GameObject torchHolder;
+    [SerializeField] private Animator torchAnimator;
     [SerializeField] private Light torchLight;
     [SerializeField] private GameObject interactionPrompt;
 
@@ -15,13 +17,21 @@ public class PlayerTorch : MonoBehaviour
     [SerializeField] private float flickerAmount = 0.35f;
     [SerializeField] private float flickerSpeed = 8f;
 
+    [Header("Animation")]
+    [SerializeField] private float equipDuration = 0.65f;
+
     private bool torchEquipped = false;
+    private bool isAnimating = false;
 
     private void Start()
     {
-        // Torch must begin hidden.
+        // Keep the torch active so its Animator can work.
         if (torchHolder != null)
-            torchHolder.SetActive(false);
+            torchHolder.SetActive(true);
+
+        // Keep the light off until equipped.
+        if (torchLight != null)
+            torchLight.enabled = false;
 
         if (interactionPrompt != null)
             interactionPrompt.SetActive(false);
@@ -32,7 +42,6 @@ public class PlayerTorch : MonoBehaviour
         if (atmosphere == null || torchHolder == null)
             return;
 
-        // Torch becomes usable only after night has arrived.
         bool torchAvailable = atmosphere.IsNight;
 
         if (!torchAvailable)
@@ -43,18 +52,18 @@ public class PlayerTorch : MonoBehaviour
             return;
         }
 
-        // Show prompt when the torch is not equipped.
         if (interactionPrompt != null)
-            interactionPrompt.SetActive(!torchEquipped);
+            interactionPrompt.SetActive(!torchEquipped && !isAnimating);
 
-        // E toggles the torch on and off.
         if (Keyboard.current != null &&
-            Keyboard.current.eKey.wasPressedThisFrame)
+            Keyboard.current.eKey.wasPressedThisFrame &&
+            !RustlingBush.IsPlayerNearBush &&
+            !torchEquipped &&
+            !isAnimating)
         {
-            ToggleTorch();
+            StartCoroutine(EquipTorch());
         }
 
-        // Flickering only while the torch is equipped.
         if (torchEquipped && torchLight != null)
         {
             float noise = Mathf.PerlinNoise(
@@ -68,23 +77,26 @@ public class PlayerTorch : MonoBehaviour
         }
     }
 
-    private void ToggleTorch()
+    private IEnumerator EquipTorch()
     {
-        torchEquipped = !torchEquipped;
-
-        torchHolder.SetActive(torchEquipped);
-
-        if (torchEquipped)
-        {
-            Debug.Log("Torch equipped.");
-        }
-        else
-        {
-            Debug.Log("Torch put away.");
-        }
+        isAnimating = true;
 
         if (interactionPrompt != null)
-            interactionPrompt.SetActive(!torchEquipped);
+            interactionPrompt.SetActive(false);
+
+        // Play the animation.
+        if (torchAnimator != null)
+            torchAnimator.SetTrigger("Equip");
+
+        // Wait for the equip animation.
+        yield return new WaitForSeconds(equipDuration);
+
+        torchEquipped = true;
+        isAnimating = false;
+
+        if (torchLight != null)
+            torchLight.enabled = true;
+
+        Debug.Log("Torch equipped.");
     }
 }
-
