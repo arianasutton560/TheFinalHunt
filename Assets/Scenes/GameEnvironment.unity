@@ -6062,6 +6062,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 653999793}
+  - component: {fileID: 653999794}
   m_Layer: 0
   m_Name: SquirrelBushSystem
   m_TagString: Untagged
@@ -6088,6 +6089,52 @@ Transform:
   - {fileID: 1423383888}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &653999794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 653999792}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03845153a0a72274e8ed4eb9a2566e2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RustlingBush
+  player: {fileID: 543698419}
+  squirrel: {fileID: 1951121479}
+  squirrelAnimator: {fileID: 2014280411}
+  interactionPrompt: {fileID: 149092959}
+  bushes:
+  - bushRoot: {fileID: 1940969340}
+    bushModel: {fileID: 1593881598}
+    squirrelHidePoint: {fileID: 1082045307}
+    rustlingAudio: {fileID: 1593881600}
+    originalRotation: {x: 0, y: 0, z: 0, w: 0}
+  - bushRoot: {fileID: 1448848175}
+    bushModel: {fileID: 1651025657}
+    squirrelHidePoint: {fileID: 913832593}
+    rustlingAudio: {fileID: 1651025659}
+    originalRotation: {x: 0, y: 0, z: 0, w: 0}
+  - bushRoot: {fileID: 1082647587}
+    bushModel: {fileID: 1473931823}
+    squirrelHidePoint: {fileID: 606380253}
+    rustlingAudio: {fileID: 1473931825}
+    originalRotation: {x: 0, y: 0, z: 0, w: 0}
+  - bushRoot: {fileID: 1423383888}
+    bushModel: {fileID: 1210482104}
+    squirrelHidePoint: {fileID: 127944874}
+    rustlingAudio: {fileID: 1210482106}
+    originalRotation: {x: 0, y: 0, z: 0, w: 0}
+  startingBush: 0
+  interactionDistance: 6
+  shakeAmount: 4
+  shakeSpeed: 12
+  stopDuration: 1.5
+  squirrelSpeed: 5
+  jumpHeight: 0.25
+  groundOffset: 0
+  rustlingVolume: 0.7
 --- !u!1001 &658889149
 PrefabInstance:
   m_ObjectHideFlags: 0

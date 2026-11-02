@@ -41,6 +41,18 @@ public class RustlingBush : MonoBehaviour
     public float jumpHeight = 0.25f;
     public float groundOffset = 0f;
 
+    
+    [Header("Final Encounter")]
+    public AudioSource eatingAudio;
+    public CanvasGroup fadeScreen;
+    public PlayerController playerController;
+
+    public float fadeDuration = 0.5f;
+    public float eatingDuration = 3f;
+
+private bool finalEncounterComplete = false;
+
+
     [Header("Sound")]
     [Range(0f, 1f)]
     public float rustlingVolume = 0.7f;
@@ -126,14 +138,26 @@ public class RustlingBush : MonoBehaviour
                 Keyboard.current != null &&
                 Keyboard.current.eKey.wasPressedThisFrame)
             {
-                StartCoroutine(MoveToNextBush());
+                if (currentBush == bushes.Count - 1)
+                {
+                    StartCoroutine(FinalEncounter());
+                }
+                else
+                {
+                    StartCoroutine(MoveToNextBush());
+                }
             }
+
         }
     }
 
+    
     bool CanInteract()
     {
-        if (isMoving || player == null || bushes.Count < 2)
+        if (finalEncounterComplete)
+        return false;
+
+        if (isMoving || player == null || bushes.Count == 0)
             return false;
 
         Transform root = bushes[currentBush].bushRoot;
@@ -145,6 +169,7 @@ public class RustlingBush : MonoBehaviour
             player.position, root.position)
             <= interactionDistance;
     }
+
 
     void ShakeBush(int index, float strength)
     {
@@ -172,35 +197,19 @@ public class RustlingBush : MonoBehaviour
         }
     }
 
+    
     int ChooseNextBush()
     {
-        List<int> choices = new List<int>();
+        // Move to the next bush in the Inspector list.
+        int nextBush = currentBush + 1;
 
-        for (int i = 0; i < bushes.Count; i++)
-        {
-            if (i != currentBush && i != lastBush &&
-                bushes[i].squirrelHidePoint != null)
-            {
-                choices.Add(i);
-            }
-        }
-
-        // Allow the previous bush if no other choice exists.
-        if (choices.Count == 0)
-        {
-            for (int i = 0; i < bushes.Count; i++)
-            {
-                if (i != currentBush &&
-                    bushes[i].squirrelHidePoint != null)
-                    choices.Add(i);
-            }
-        }
-
-        if (choices.Count == 0)
+        // Stop at the final bush.
+        if (nextBush >= bushes.Count)
             return currentBush;
 
-        return choices[Random.Range(0, choices.Count)];
+        return nextBush;
     }
+
 
     IEnumerator MoveToNextBush()
     {
@@ -267,6 +276,77 @@ public class RustlingBush : MonoBehaviour
         StartRustling(currentBush);
 
         isMoving = false;
+    }
+
+    
+    IEnumerator FinalEncounter()
+    {
+        isMoving = true;
+        finalEncounterComplete = true;
+
+        if (interactionPrompt != null)
+            interactionPrompt.SetActive(false);
+
+        // Prevent player movement during the cinematic.
+        if (playerController != null)
+            playerController.enabled = false;
+
+        // Stop the final bush rustling.
+        yield return StartCoroutine(
+            StopRustling(currentBush));
+
+        // Fade the screen to black.
+        if (fadeScreen != null)
+        {
+            float elapsed = 0f;
+
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.deltaTime;
+
+                fadeScreen.alpha = Mathf.Clamp01(
+                    elapsed / fadeDuration);
+
+                yield return null;
+            }
+
+            fadeScreen.alpha = 1f;
+        }
+
+        // Play the eating sound while the screen is black.
+        if (eatingAudio != null)
+            eatingAudio.Play();
+
+        yield return new WaitForSeconds(eatingDuration);
+
+        // The squirrel is no longer present.
+        if (squirrel != null)
+            squirrel.gameObject.SetActive(false);
+
+        // Reveal the forest again.
+        if (fadeScreen != null)
+        {
+            float elapsed = 0f;
+
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.deltaTime;
+
+                fadeScreen.alpha = 1f -
+                    Mathf.Clamp01(elapsed / fadeDuration);
+
+                yield return null;
+            }
+
+            fadeScreen.alpha = 0f;
+        }
+
+        if (playerController != null)
+            playerController.enabled = true;
+
+        isMoving = false;
+
+        Debug.Log("Final squirrel encounter completed.");
     }
 
     IEnumerator StopRustling(int index)
