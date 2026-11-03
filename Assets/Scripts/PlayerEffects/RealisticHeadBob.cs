@@ -45,7 +45,7 @@ public class RealisticHeadBob : MonoBehaviour
         float speed = playerController != null
         ? playerController.HorizontalSpeed
         : velocity.magnitude;
-        Debug.Log("Player speed: " + speed + " | Grounded: " + controller.isGrounded);
+        //Debug.Log("Player speed: " + speed + " | Grounded: " + controller.isGrounded);
 
         bool moving =
             controller.isGrounded &&

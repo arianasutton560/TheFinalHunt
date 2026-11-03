@@ -39,18 +39,22 @@ public class RustlingBush : MonoBehaviour
     [Header("Squirrel Movement")]
     public float squirrelSpeed = 5f;
     public float jumpHeight = 0.25f;
-    public float groundOffset = 0f;
 
-    
+    [Header("Terrain Following")]
+    public LayerMask groundLayer;
+    public float raycastHeight = 3f;
+    public float raycastDistance = 12f;
+    public float groundOffset = 0.08f;
+   
     [Header("Final Encounter")]
-    public AudioSource eatingAudio;
+
     public CanvasGroup fadeScreen;
     public PlayerController playerController;
 
     public float fadeDuration = 0.5f;
     public float eatingDuration = 3f;
-
-private bool finalEncounterComplete = false;
+    public SquirrelAttackCinematic finalAttack;
+    private bool finalEncounterComplete;
 
 
     [Header("Sound")]
@@ -135,12 +139,22 @@ private bool finalEncounterComplete = false;
             ShakeBush(currentBush, shakeStrength);
 
             if (CanInteract() &&
-                Keyboard.current != null &&
-                Keyboard.current.eKey.wasPressedThisFrame)
+            Keyboard.current != null &&
+            Keyboard.current.eKey.wasPressedThisFrame)
             {
                 if (currentBush == bushes.Count - 1)
                 {
-                    StartCoroutine(FinalEncounter());
+                    if (finalAttack != null)
+                    {
+                        finalEncounterComplete = true;
+                        isMoving = true;
+
+                        if (interactionPrompt != null)
+                            interactionPrompt.SetActive(false);
+
+                        StartCoroutine(StopRustling(currentBush));
+                        finalAttack.PlayCinematic();
+                    }
                 }
                 else
                 {
@@ -152,12 +166,32 @@ private bool finalEncounterComplete = false;
     }
 
     
+    Vector3 FollowGround(Vector3 position)
+    {
+        Vector3 rayStart =
+            position + Vector3.up * raycastHeight;
+
+        RaycastHit hit;
+
+        if (Physics.Raycast(
+            rayStart,
+            Vector3.down,
+            out hit,
+            raycastHeight + raycastDistance,
+            groundLayer,
+            QueryTriggerInteraction.Ignore))
+        {
+            position.y = hit.point.y + groundOffset;
+        }
+
+        return position;
+    }
+
+    
     bool CanInteract()
     {
-        if (finalEncounterComplete)
-        return false;
-
-        if (isMoving || player == null || bushes.Count == 0)
+        if (isMoving || finalEncounterComplete ||
+            player == null || bushes.Count == 0)
             return false;
 
         Transform root = bushes[currentBush].bushRoot;
@@ -169,6 +203,7 @@ private bool finalEncounterComplete = false;
             player.position, root.position)
             <= interactionDistance;
     }
+
 
 
     void ShakeBush(int index, float strength)
@@ -250,20 +285,19 @@ private bool finalEncounterComplete = false;
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-
+            
             Vector3 position =
                 Vector3.Lerp(start, destination, t);
 
-            // Small running hops.
-            position.y += Mathf.Abs(
-                Mathf.Sin(t * distance * 5f)) * jumpHeight;
+            // Keep the squirrel on the snowy ground.
+            position = FollowGround(position);
 
             squirrel.position = position;
 
             yield return null;
         }
 
-        squirrel.position = destination;
+        squirrel.position = FollowGround(destination);
 
         // Return squirrel to its idle state.
         if (squirrelAnimator != null)
@@ -276,77 +310,6 @@ private bool finalEncounterComplete = false;
         StartRustling(currentBush);
 
         isMoving = false;
-    }
-
-    
-    IEnumerator FinalEncounter()
-    {
-        isMoving = true;
-        finalEncounterComplete = true;
-
-        if (interactionPrompt != null)
-            interactionPrompt.SetActive(false);
-
-        // Prevent player movement during the cinematic.
-        if (playerController != null)
-            playerController.enabled = false;
-
-        // Stop the final bush rustling.
-        yield return StartCoroutine(
-            StopRustling(currentBush));
-
-        // Fade the screen to black.
-        if (fadeScreen != null)
-        {
-            float elapsed = 0f;
-
-            while (elapsed < fadeDuration)
-            {
-                elapsed += Time.deltaTime;
-
-                fadeScreen.alpha = Mathf.Clamp01(
-                    elapsed / fadeDuration);
-
-                yield return null;
-            }
-
-            fadeScreen.alpha = 1f;
-        }
-
-        // Play the eating sound while the screen is black.
-        if (eatingAudio != null)
-            eatingAudio.Play();
-
-        yield return new WaitForSeconds(eatingDuration);
-
-        // The squirrel is no longer present.
-        if (squirrel != null)
-            squirrel.gameObject.SetActive(false);
-
-        // Reveal the forest again.
-        if (fadeScreen != null)
-        {
-            float elapsed = 0f;
-
-            while (elapsed < fadeDuration)
-            {
-                elapsed += Time.deltaTime;
-
-                fadeScreen.alpha = 1f -
-                    Mathf.Clamp01(elapsed / fadeDuration);
-
-                yield return null;
-            }
-
-            fadeScreen.alpha = 0f;
-        }
-
-        if (playerController != null)
-            playerController.enabled = true;
-
-        isMoving = false;
-
-        Debug.Log("Final squirrel encounter completed.");
     }
 
     IEnumerator StopRustling(int index)
