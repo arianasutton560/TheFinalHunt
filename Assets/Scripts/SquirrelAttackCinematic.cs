@@ -42,11 +42,16 @@ public class SquirrelAttackCinematic : MonoBehaviour
     public float audioFadeDuration = 4f;
 
     [Header("Movement")]
-    public float escapeDistance = 0.8f;
-    public float escapeDuration = 0.35f;
+    public float escapeDuration = 1.2f;
     public float lungeDistance = 0.35f;
     public float struggleDuration = 1.4f;
     public float chewingDuration = 2.4f;
+
+    [Header("Escape Camera")]
+    public float cameraLookSpeed = 8f;
+    public float lungeDuration = 0.25f;
+    public float lungeStopDistance = 0.65f;
+    public float squirrelTurnSpeed = 12f;
 
     private bool isPlaying;
 
@@ -158,46 +163,148 @@ public class SquirrelAttackCinematic : MonoBehaviour
         if (playerController != null)
             playerController.enabled = false;
 
-        // Turn off normal squirrel movement animation.
-        if (squirrelAnimator != null)
-            squirrelAnimator.enabled = false;
-
         Vector3 originalCameraPosition =
             playerCamera.localPosition;
 
+        Quaternion originalCameraRotation =
+            playerCamera.localRotation;
+
+        
+        
+        // 1. Squirrel escapes toward its destination.
         Vector3 startPosition = squirrel.position;
-        Vector3 escapeDirection = squirrelEscapePoint.position;
+        Vector3 escapeEnd = squirrelEscapePoint.position;
 
-        escapeDirection.y = 0f;
+        Vector3 runDirection = escapeEnd - startPosition;
+        runDirection.y = 0f;
 
-        if (escapeDirection.sqrMagnitude < 0.01f)
-            escapeDirection = playerCamera.forward;
+        if (squirrelAnimator != null)
+        {
+            squirrelAnimator.enabled = true;
+            squirrelAnimator.ResetTrigger("Run");
+            squirrelAnimator.SetTrigger("Run");
+        }
 
-        escapeDirection.Normalize();
-
-        // 1. Squirrel attempts to flee.
         float elapsed = 0f;
 
         while (elapsed < escapeDuration)
         {
             elapsed += Time.deltaTime;
+
             float t = Mathf.Clamp01(
-                elapsed / escapeDuration);
+                elapsed / Mathf.Max(escapeDuration, 0.01f));
 
-            squirrel.position = Vector3.Lerp(
-                startPosition,
-                startPosition +
-                    escapeDirection * escapeDistance,
-                t);
+            Vector3 newPosition = Vector3.Lerp(
+                startPosition, escapeEnd, t);
 
-            // Player lunges during the escape.
-            playerCamera.localPosition =
-                originalCameraPosition +
-                Vector3.forward *
-                (lungeDistance * t);
+            // Keep the squirrel on the terrain.
+            Terrain terrain = Terrain.activeTerrain;
+
+            if (terrain != null)
+            {
+                newPosition.y =
+                    terrain.SampleHeight(newPosition) +
+                    terrain.transform.position.y;
+            }
+
+            squirrel.position = newPosition;
+
+            // Turn squirrel toward its destination.
+            if (runDirection.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetRotation =
+                    Quaternion.LookRotation(runDirection);
+
+                squirrel.rotation = Quaternion.Slerp(
+                    squirrel.rotation,
+                    targetRotation,
+                    squirrelTurnSpeed * Time.deltaTime);
+            }
+
+            // Camera watches the squirrel escape.
+            Vector3 lookDirection =
+                squirrel.position - playerCamera.position;
+
+            if (lookDirection.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetLook =
+                    Quaternion.LookRotation(lookDirection);
+
+                playerCamera.rotation = Quaternion.Slerp(
+                    playerCamera.rotation,
+                    targetLook,
+                    cameraLookSpeed * Time.deltaTime);
+            }
 
             yield return null;
         }
+
+        // Stop running animation.
+        if (squirrelAnimator != null)
+            squirrelAnimator.enabled = false;
+
+        // 2. Powerful camera lunge toward the squirrel.
+        Vector3 lungeStart = playerCamera.position;
+
+        Vector3 lungeDirection =
+            escapeEnd - lungeStart;
+
+        lungeDirection.y = 0f;
+
+        Vector3 lungeEnd = lungeStart;
+
+        if (lungeDirection.sqrMagnitude > 0.001f)
+        {
+            lungeDirection.Normalize();
+
+            // Move toward the squirrel's final position.
+            lungeEnd = new Vector3(
+                escapeEnd.x,
+                lungeStart.y,
+                escapeEnd.z
+            ) - lungeDirection * lungeStopDistance;
+        }
+
+        elapsed = 0f;
+
+        while (elapsed < lungeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            float t = Mathf.Clamp01(
+                elapsed / Mathf.Max(lungeDuration, 0.01f));
+
+            // Accelerate quickly into the lunge.
+            float fastT = 1f - Mathf.Pow(1f - t, 3f);
+
+            playerCamera.position = Vector3.Lerp(
+                lungeStart, lungeEnd, fastT);
+
+            // Keep looking at the squirrel.
+            Vector3 lookDirection =
+                squirrel.position - playerCamera.position;
+
+            if (lookDirection.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetLook =
+                    Quaternion.LookRotation(lookDirection);
+
+                playerCamera.rotation = Quaternion.Slerp(
+                    playerCamera.rotation,
+                    targetLook,
+                    cameraLookSpeed * Time.deltaTime);
+            }
+
+            yield return null;
+        }
+
+        // Remember the lunge position and rotation.
+        Vector3 lungeCameraPosition =
+            playerCamera.localPosition;
+
+        Quaternion lungeCameraRotation =
+            playerCamera.localRotation;
+
 
         // 2. Grab squirrel in front of camera.
         squirrel.SetParent(grabPoint, true);
@@ -242,13 +349,17 @@ public class SquirrelAttackCinematic : MonoBehaviour
                 redVignette.alpha = GetRedFlash();
             }
 
-            // Ease camera back from the lunge.
-            playerCamera.localPosition =
-                Vector3.Lerp(
-                    originalCameraPosition +
-                        Vector3.forward * lungeDistance,
-                    originalCameraPosition,
-                    t);
+            
+            // Return camera from the lunge.
+            playerCamera.localPosition = Vector3.Lerp(
+                lungeCameraPosition,
+                originalCameraPosition,
+                t);
+
+            playerCamera.localRotation = Quaternion.Slerp(
+                lungeCameraRotation,
+                originalCameraRotation,
+                t);
 
             yield return null;
         }
@@ -311,6 +422,8 @@ public class SquirrelAttackCinematic : MonoBehaviour
 
         playerCamera.localPosition =
             originalCameraPosition;
+        playerCamera.localRotation =
+            originalCameraRotation;
 
         if (redVignette != null)
             redVignette.alpha = 0f;
