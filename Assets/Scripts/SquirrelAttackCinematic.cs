@@ -12,10 +12,24 @@ public class SquirrelAttackCinematic : MonoBehaviour
     [Header("Squirrel")]
     public Transform squirrel;
     public Animator squirrelAnimator;
+    public Transform squirrelEscapePoint;
 
     [Header("Effects")]
-    public ParticleSystem bloodParticles;
     public CanvasGroup redVignette;
+
+    [Header("Red Vignette Flash")]
+    [Range(0f, 1f)]
+    public float minimumRedAlpha = 0.05f;
+
+    [Range(0f, 1f)]
+    public float maximumRedAlpha = 0.65f;
+
+    public float redFlashSpeed = 3f;
+
+    [Header("Blood Splatter UI")]
+    public CanvasGroup bloodSplatterOverlay;
+    public float bloodSplatterMaxAlpha = 0.9f;
+    public float bloodSplatterFadeDuration = 2.5f;
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -23,6 +37,9 @@ public class SquirrelAttackCinematic : MonoBehaviour
     public AudioClip crunchSound;
     public AudioClip chewingSound;
     public AudioSource encounterBackgroundAudio;
+
+    [Header("Encounter Audio Fade")]
+    public float audioFadeDuration = 4f;
 
     [Header("Movement")]
     public float escapeDistance = 0.8f;
@@ -40,6 +57,75 @@ public class SquirrelAttackCinematic : MonoBehaviour
             StartCoroutine(AttackSequence());
     }
 
+    
+    float GetRedFlash()
+    {
+        float pulse = (Mathf.Sin(
+            Time.time * redFlashSpeed * Mathf.PI * 2f
+        ) + 1f) / 2f;
+
+        return Mathf.Lerp(
+            minimumRedAlpha,
+            maximumRedAlpha,
+            pulse
+        );
+    }
+
+
+    IEnumerator FadeOutEncounterAudio()
+    {
+        if (encounterBackgroundAudio == null)
+            yield break;
+
+        float startingVolume = encounterBackgroundAudio.volume;
+        float elapsed = 0f;
+
+        while (elapsed < audioFadeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(
+                elapsed / Mathf.Max(audioFadeDuration, 0.01f));
+
+            // Smoothly reduce the volume.
+            float smoothProgress =
+                Mathf.SmoothStep(0f, 1f, progress);
+
+            encounterBackgroundAudio.volume =
+                Mathf.Lerp(startingVolume, 0f, smoothProgress);
+
+            yield return null;
+        }
+
+        encounterBackgroundAudio.Stop();
+
+        // Restore volume for future use.
+        encounterBackgroundAudio.volume = startingVolume;
+    }
+
+    IEnumerator FadeOutBloodSplatter()
+    {
+        if (bloodSplatterOverlay == null)
+            yield break;
+
+        float elapsed = 0f;
+        float startAlpha = bloodSplatterOverlay.alpha;
+
+        while (elapsed < bloodSplatterFadeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            float t = Mathf.Clamp01(
+                elapsed / Mathf.Max(bloodSplatterFadeDuration, 0.01f));
+
+            bloodSplatterOverlay.alpha =
+                Mathf.Lerp(startAlpha, 0f, t);
+
+            yield return null;
+        }
+
+        bloodSplatterOverlay.alpha = 0f;
+    }
     IEnumerator AttackSequence()
     {
         if (squirrel == null || playerCamera == null ||
@@ -48,6 +134,8 @@ public class SquirrelAttackCinematic : MonoBehaviour
 
         
         isPlaying = true;
+        if (bloodSplatterOverlay != null)
+        bloodSplatterOverlay.alpha = 0f;
 
         if (encounterBackgroundAudio != null)
         {
@@ -78,8 +166,7 @@ public class SquirrelAttackCinematic : MonoBehaviour
             playerCamera.localPosition;
 
         Vector3 startPosition = squirrel.position;
-        Vector3 escapeDirection =
-            squirrel.position - playerCamera.position;
+        Vector3 escapeDirection = squirrelEscapePoint.position;
 
         escapeDirection.y = 0f;
 
@@ -152,10 +239,7 @@ public class SquirrelAttackCinematic : MonoBehaviour
             // Pulsing red edges.
             if (redVignette != null)
             {
-                redVignette.alpha =
-                    0.12f +
-                    Mathf.Abs(Mathf.Sin(
-                        Time.time * 5f)) * 0.15f;
+                redVignette.alpha = GetRedFlash();
             }
 
             // Ease camera back from the lunge.
@@ -180,15 +264,19 @@ public class SquirrelAttackCinematic : MonoBehaviour
             crunchSound != null)
             audioSource.PlayOneShot(crunchSound);
 
-        if (bloodParticles != null)
-            bloodParticles.Play();
+        // Show blood splatter image immediately.
+        if (bloodSplatterOverlay != null)
+        {
+            bloodSplatterOverlay.alpha = bloodSplatterMaxAlpha;
+            StartCoroutine(FadeOutBloodSplatter());
+        }
 
-        squirrel.localRotation = grabbedRotation;
-        squirrel.localPosition = grabbedPosition;
+        // Hide the squirrel immediately after the crunch.
+        squirrel.gameObject.SetActive(false);
 
         // Brief visual impact.
         if (redVignette != null)
-            redVignette.alpha = 0.4f;
+            redVignette.alpha = 0.85f;
 
         yield return new WaitForSeconds(0.3f);
 
@@ -206,28 +294,20 @@ public class SquirrelAttackCinematic : MonoBehaviour
             playerCamera.localPosition =
                 originalCameraPosition +
                 new Vector3(
-                    0f,
-                    Mathf.Sin(Time.time * 9f) * 0.012f,
-                    0f);
+                Mathf.Sin(Time.time * 7f) * 0.015f,
+                Mathf.Sin(Time.time * 9f) * 0.035f,
+                Mathf.Sin(Time.time * 6f) * 0.01f
+            );
 
             if (redVignette != null)
             {
-                float fade = 1f -
-                    Mathf.Clamp01(
-                        elapsed / chewingDuration);
+                float fade = 1f - Mathf.Clamp01(elapsed / chewingDuration);
 
-                redVignette.alpha =
-                    (0.10f +
-                    Mathf.Abs(Mathf.Sin(
-                        Time.time * 4f)) * 0.12f)
-                    * fade;
+                redVignette.alpha = GetRedFlash() * fade;
             }
 
             yield return null;
         }
-
-        // 6. Return control to the player.
-        squirrel.gameObject.SetActive(false);
 
         playerCamera.localPosition =
             originalCameraPosition;
@@ -242,7 +322,7 @@ public class SquirrelAttackCinematic : MonoBehaviour
             playerController.enabled = true;
 
         if (encounterBackgroundAudio != null)
-            encounterBackgroundAudio.Stop();
+            StartCoroutine(FadeOutEncounterAudio());
         isPlaying = false;
     }
 }

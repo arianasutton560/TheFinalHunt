@@ -39,12 +39,21 @@ public class RustlingBush : MonoBehaviour
     [Header("Squirrel Movement")]
     public float squirrelSpeed = 5f;
     public float jumpHeight = 0.25f;
+    public float hopSpeed = 10f;
 
     [Header("Terrain Following")]
     public LayerMask groundLayer;
     public float raycastHeight = 3f;
     public float raycastDistance = 12f;
     public float groundOffset = 0.08f;
+
+    
+    [Header("Final Bush Suspense")]
+    public AudioSource suspenseAudio;
+    public float suspenseDistance = 12f;
+    public float suspenseMaxVolume = 0.8f;
+    public float suspenseFadeSpeed = 0.5f;
+
    
     [Header("Final Encounter")]
 
@@ -131,6 +140,7 @@ public class RustlingBush : MonoBehaviour
         if (bushes.Count < 2)
             return;
 
+        UpdateSuspenseAudio();
         if (interactionPrompt != null)
             interactionPrompt.SetActive(CanInteract());
 
@@ -153,6 +163,11 @@ public class RustlingBush : MonoBehaviour
                             interactionPrompt.SetActive(false);
 
                         StartCoroutine(StopRustling(currentBush));
+                        if (suspenseAudio != null)
+                        {
+                            suspenseAudio.Stop();
+                            suspenseAudio.volume = 0f;
+                        }
                         finalAttack.PlayCinematic();
                     }
                 }
@@ -185,6 +200,44 @@ public class RustlingBush : MonoBehaviour
         }
 
         return position;
+    }
+
+
+    void UpdateSuspenseAudio()
+    {
+        if (suspenseAudio == null || player == null ||
+            bushes.Count == 0)
+            return;
+
+        bool atFinalBush =
+            currentBush == bushes.Count - 1 &&
+            !isMoving &&
+            !finalEncounterComplete;
+
+        float targetVolume = 0f;
+
+        if (atFinalBush &&
+            bushes[currentBush].bushRoot != null)
+        {
+            float distance = Vector3.Distance(
+                player.position,
+                bushes[currentBush].bushRoot.position);
+
+            float closeness = Mathf.InverseLerp(
+                suspenseDistance,
+                0f,
+                distance);
+
+            targetVolume = closeness * suspenseMaxVolume;
+
+            if (!suspenseAudio.isPlaying)
+                suspenseAudio.Play();
+        }
+
+        suspenseAudio.volume = Mathf.MoveTowards(
+            suspenseAudio.volume,
+            targetVolume,
+            suspenseFadeSpeed * Time.deltaTime);
     }
 
     
@@ -290,9 +343,17 @@ public class RustlingBush : MonoBehaviour
                 Vector3.Lerp(start, destination, t);
 
             // Keep the squirrel on the snowy ground.
-            position = FollowGround(position);
+                    
+            Vector3 groundPosition = FollowGround(position);
 
-            squirrel.position = position;
+            // Add hopping movement above the terrain.
+            float hop = Mathf.Abs(
+                Mathf.Sin(Time.time * hopSpeed)) * jumpHeight;
+
+            groundPosition.y += hop;
+
+            squirrel.position = groundPosition;
+
 
             yield return null;
         }
