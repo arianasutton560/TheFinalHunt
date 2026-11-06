@@ -13,6 +13,10 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 0.1f;
     public Transform playerCamera;
 
+    [Header("Hunger Movement")]
+    [Range(0.1f, 1f)]
+    public float hungerSpeedMultiplier = 1f;
+
     private CharacterController controller;
     private float xRotation = 0f;
     private float verticalVelocity = 0f;
@@ -56,8 +60,8 @@ public class PlayerController : MonoBehaviour
 
         verticalVelocity += gravity * Time.deltaTime;
 
-        Vector3 movement = horizontalMove;
-        movement.y = verticalVelocity;
+        Vector3 movement =
+        horizontalMove * hungerSpeedMultiplier;
 
         // One CharacterController.Move call per frame.
         controller.Move(movement * Time.deltaTime);
