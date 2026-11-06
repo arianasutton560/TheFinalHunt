@@ -2974,7 +2974,7 @@ Transform:
   - {fileID: 1250056270}
   - {fileID: 1375951312}
   - {fileID: 1888787639}
-  m_Father: {fileID: 552558313}
+  m_Father: {fileID: 2006995632}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
@@ -5596,6 +5596,7 @@ MonoBehaviour:
   gravity: -9.81
   mouseSensitivity: 0.1
   playerCamera: {fileID: 330585546}
+  hungerSpeedMultiplier: 1
 --- !u!143 &543698421
 CharacterController:
   m_ObjectHideFlags: 0
@@ -5672,7 +5673,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 330585546}
+  - {fileID: 2006995632}
   m_Father: {fileID: 543698419}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &552558314
@@ -9320,7 +9321,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 2
+  m_Radius: 4
   m_Center: {x: 0, y: 0, z: -0.2}
 --- !u!114 &958695252
 MonoBehaviour:
@@ -9338,7 +9339,16 @@ MonoBehaviour:
   pulseSpeed: 0.5
   pulseSize: 0.08
   foodLight: {fileID: 1315450793}
+  player: {fileID: 543698419}
+  interactionDistance: 3
   interactionPrompt: {fileID: 1856381943}
+  pickupPivot: {fileID: 2006995632}
+  playerController: {fileID: 543698420}
+  bendDistance: 0.65
+  forwardDistance: 0.15
+  bendDuration: 0.65
+  pickupPause: 0.35
+  returnDuration: 0.8
 --- !u!1001 &959031589
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -20593,6 +20603,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1995489840}
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &2006995631
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2006995632}
+  m_Layer: 0
+  m_Name: PickupPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2006995632
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2006995631}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 330585546}
+  m_Father: {fileID: 552558313}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2008294852
 GameObject:
   m_ObjectHideFlags: 0
@@ -21914,7 +21956,7 @@ Transform:
   m_GameObject: {fileID: 2128521658}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 365.76, y: 7.94, z: 347.62}
+  m_LocalPosition: {x: 374.47, y: 7.74, z: 330.16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -22051,13 +22093,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HungerZone
   heartbeatAudio: {fileID: 316941128}
-  maximumVolume: 1
+  maximumVolume: 1.5
   hungerRedOverlay: {fileID: 58509804}
   redFlashSpeed: 0.8
   maximumRedAlpha: 1
   fadeInDuration: 3
   fadeOutDuration: 3
   food: {fileID: 958695252}
+  playerController: {fileID: 543698420}
+  hungerSlowMultiplier: 0.5
 --- !u!1 &2128832446
 GameObject:
   m_ObjectHideFlags: 0

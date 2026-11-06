@@ -63,6 +63,9 @@ public class PlayerController : MonoBehaviour
         Vector3 movement =
         horizontalMove * hungerSpeedMultiplier;
 
+        // Add gravity back into the movement.
+        movement.y = verticalVelocity;
+
         // One CharacterController.Move call per frame.
         controller.Move(movement * Time.deltaTime);
 
