@@ -33,6 +33,18 @@ public class WendigoAtmosphere : MonoBehaviour
     [SerializeField] private float nightFogStart = 8f;
     [SerializeField] private float nightFogEnd = 45f;
 
+    [Header("Night Sky")]
+    [SerializeField] private float nightSkyExposure = 0f;
+
+    private Material runtimeSkybox;
+    private float daySkyExposure = 1f;
+
+    [Header("Snowstorm Fog")]
+    [SerializeField] private SnowstormZone snowstormZone;
+
+    [SerializeField] private float stormFogStart = 2f;
+    [SerializeField] private float stormFogEnd = 18f;
+
     [Header("Day Lighting")]
     [SerializeField] private Color dayLightColor =
         new Color(1f, 0.9f, 0.78f);
@@ -59,6 +71,7 @@ public class WendigoAtmosphere : MonoBehaviour
     public bool IsTransitioning { get; private set; }
 
     private bool transitionStarted;
+    private float currentAtmosphereTime = 0f;
 
     private void Awake()
     {
@@ -66,6 +79,17 @@ public class WendigoAtmosphere : MonoBehaviour
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.ambientMode = AmbientMode.Flat;
 
+        if (RenderSettings.skybox != null)
+        {
+            runtimeSkybox = new Material(RenderSettings.skybox);
+            RenderSettings.skybox = runtimeSkybox;
+
+            if (runtimeSkybox.HasProperty("_Exposure"))
+            {
+                daySkyExposure =
+                    runtimeSkybox.GetFloat("_Exposure");
+            }
+        }
         if (startAtNight)
         {
             ApplyAtmosphere(1f);
@@ -117,17 +141,57 @@ public class WendigoAtmosphere : MonoBehaviour
         IsTransitioning = false;
     }
 
+    private void LateUpdate()
+    {
+        // Update fog continuously so the
+        // snowstorm can build and fade.
+        ApplyAtmosphere(currentAtmosphereTime);
+    }
+
     private void ApplyAtmosphere(float t)
     {
-        // Fog becomes colder and closer at night.
-        RenderSettings.fogColor =
+        currentAtmosphereTime = t;
+        // Calculate the normal day/night fog.
+        Color normalFogColor =
             Color.Lerp(dayFogColor, nightFogColor, t);
 
-        RenderSettings.fogStartDistance =
+        float normalFogStart =
             Mathf.Lerp(dayFogStart, nightFogStart, t);
 
-        RenderSettings.fogEndDistance =
+        float normalFogEnd =
             Mathf.Lerp(dayFogEnd, nightFogEnd, t);
+
+        // Read the current snowstorm intensity.
+        float stormStrength = 0f;
+
+        if (snowstormZone != null)
+            stormStrength = snowstormZone.StormIntensity;
+
+            if (runtimeSkybox != null &&
+                runtimeSkybox.HasProperty("_Exposure"))
+            {
+                float skyBrightness = Mathf.Lerp(
+                    daySkyExposure,
+                    nightSkyExposure,
+                    t);
+
+                runtimeSkybox.SetFloat("_Exposure", skyBrightness);
+            }
+
+        // Make fog thicker as the storm grows.
+        RenderSettings.fogColor = normalFogColor;
+
+        RenderSettings.fogStartDistance =
+            Mathf.Lerp(
+                normalFogStart,
+                stormFogStart,
+                stormStrength);
+
+        RenderSettings.fogEndDistance =
+            Mathf.Lerp(
+                normalFogEnd,
+                stormFogEnd,
+                stormStrength);
 
         // Reduce ambient forest illumination.
         RenderSettings.ambientLight =

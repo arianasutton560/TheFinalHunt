@@ -11,11 +11,26 @@ public class SnowstormZone : MonoBehaviour
     public float fadeInDuration = 10f;
     public float fadeOutDuration = 5f;
 
+    
+    [Header("Blizzard Wind Audio")]
+    public AudioSource windAudio;
+    public float maximumWindVolume = 0.85f;
+
+    // Other scripts can read the current storm intensity.
+    public float StormIntensity { get; private set; }
+
+
     private bool playerInside = false;
     private float intensity = 0f;
 
     void Start()
     {
+        if (windAudio != null)
+        {
+            windAudio.Stop();
+            windAudio.volume = 0f;
+            windAudio.loop = true;
+        }
         if (snowParticles != null)
         {
             var emission = snowParticles.emission;
@@ -38,6 +53,10 @@ public class SnowstormZone : MonoBehaviour
             !snowParticles.isPlaying)
         {
             snowParticles.Play();
+        }
+        if (windAudio != null && !windAudio.isPlaying)
+        {
+            windAudio.Play();
         }
     }
 
@@ -67,6 +86,21 @@ public class SnowstormZone : MonoBehaviour
 
         float strength = Mathf.SmoothStep(
             0f, 1f, intensity);
+
+        // Share storm strength with the atmosphere system.
+        StormIntensity = strength;
+
+        // Wind gets louder as the snowstorm grows.
+        if (windAudio != null)
+        {
+            windAudio.volume = maximumWindVolume * strength;
+
+            if (!playerInside && intensity <= 0f &&
+                windAudio.isPlaying)
+            {
+                windAudio.Stop();
+            }
+        }
 
         var emission = snowParticles.emission;
 
