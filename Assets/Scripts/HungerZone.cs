@@ -36,6 +36,17 @@ public class HungerZone : MonoBehaviour
     [Range(0.1f, 1f)]
     public float hungerSlowMultiplier = 0.4f;
 
+    [Header("Hunger Camera Sway")]
+    public Transform hungerSwayPivot;
+
+    public float hungerTilt = 3f;
+    public float hungerSideSway = 0.04f;
+    public float hungerSwaySpeed = 1.2f;
+
+private Vector3 originalSwayPosition;
+private Quaternion originalSwayRotation;
+
+
     public bool HungerActive
     {
         get { return hungerStarted && !foodCollected; }
@@ -54,6 +65,11 @@ public class HungerZone : MonoBehaviour
             heartbeatAudio.Stop();
             heartbeatAudio.volume = 0f;
             heartbeatAudio.loop = true;
+        }
+        if (hungerSwayPivot != null)
+        {
+            originalSwayPosition = hungerSwayPivot.localPosition;
+            originalSwayRotation = hungerSwayPivot.localRotation;
         }
     }
 
@@ -131,6 +147,41 @@ public class HungerZone : MonoBehaviour
         }
     }
 
+    void LateUpdate()
+    {
+        if (hungerSwayPivot == null)
+            return;
+
+        // Use the same strength as hunger effects.
+        float strength = Mathf.SmoothStep(
+            0f, 1f, intensity);
+
+        float sway = Time.time * hungerSwaySpeed;
+
+        // Slight sideways movement.
+        float horizontal =
+            Mathf.Sin(sway) * hungerSideSway;
+
+        // Tilt left and right.
+        float tilt =
+            Mathf.Sin(sway * 0.8f) * hungerTilt;
+
+        // Apply the movement gradually.
+        hungerSwayPivot.localPosition =
+            originalSwayPosition +
+            new Vector3(
+                horizontal * strength,
+                0f,
+                0f);
+
+        hungerSwayPivot.localRotation =
+            originalSwayRotation *
+            Quaternion.Euler(
+                0f,
+                0f,
+                tilt * strength);
+    }
+
     void OnDisable()
     {
         if (playerController != null)
@@ -138,6 +189,12 @@ public class HungerZone : MonoBehaviour
 
         if (hungerVisionVolume != null)
             hungerVisionVolume.weight = 0f;
+            
+        if (hungerSwayPivot != null)
+        {
+            hungerSwayPivot.localPosition = originalSwayPosition;
+            hungerSwayPivot.localRotation = originalSwayRotation;
+        }
     }
 
     public void CollectFood()
