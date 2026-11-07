@@ -1,5 +1,6 @@
 
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class HungerZone : MonoBehaviour
 {
@@ -11,6 +12,12 @@ public class HungerZone : MonoBehaviour
     public CanvasGroup hungerRedOverlay;
     public float redFlashSpeed = 2f;
     public float maximumRedAlpha = 0.35f;
+
+    
+    [Header("Hunger Vision Distortion")]
+    public Volume hungerVisionVolume;
+    public float maximumDistortion = 0.6f;
+
 
     [Header("Transition")]
     public float fadeInDuration = 3f;
@@ -36,6 +43,9 @@ public class HungerZone : MonoBehaviour
 
     void Start()
     {
+        if (hungerVisionVolume != null)
+            hungerVisionVolume.weight = 0f;
+
         if (hungerRedOverlay != null)
             hungerRedOverlay.alpha = 0f;
 
@@ -79,7 +89,12 @@ public class HungerZone : MonoBehaviour
 
         float strength = Mathf.SmoothStep(
             0f, 1f, intensity);
-
+                    
+        if (hungerVisionVolume != null)
+        {
+            hungerVisionVolume.weight =
+                strength * maximumDistortion;
+        }
                     
         if (playerController != null)
         {
@@ -116,10 +131,13 @@ public class HungerZone : MonoBehaviour
         }
     }
 
-        void OnDisable()
+    void OnDisable()
     {
         if (playerController != null)
             playerController.hungerSpeedMultiplier = 1f;
+
+        if (hungerVisionVolume != null)
+            hungerVisionVolume.weight = 0f;
     }
 
     public void CollectFood()
