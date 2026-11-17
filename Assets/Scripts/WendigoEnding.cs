@@ -59,6 +59,7 @@ public class WendigoEnding : MonoBehaviour
     public float creditsStartDelay = 1f;
     public float creditsScrollDuration = 25f;
     public float pauseAfterScream = 3f;
+    public float finalScreamFadeDuration = 1f;
 
     private bool playerInZone;
     private bool endingStarted;
@@ -218,13 +219,36 @@ public class WendigoEnding : MonoBehaviour
         if (finalScream != null && finalScream.clip != null)
         {
             finalScream.loop = false;
+            float screamVolume = finalScream.volume;
             finalScream.Play();
 
-            // Wait until the scream finishes.
-            while (finalScream.isPlaying)
+            // Fade the scream during its final seconds.
+            float fadeDuration = Mathf.Min(
+                finalScreamFadeDuration,
+                finalScream.clip.length
+            );
+            float fadeStartTime = finalScream.clip.length - fadeDuration;
+
+            while (finalScream.isPlaying && finalScream.time < fadeStartTime)
             {
                 yield return null;
             }
+
+            float fadeTime = 0f;
+            while (finalScream.isPlaying && fadeTime < fadeDuration)
+            {
+                fadeTime += Time.deltaTime;
+                finalScream.volume = Mathf.Lerp(
+                    screamVolume,
+                    0f,
+                    fadeTime / fadeDuration
+                );
+                yield return null;
+            }
+
+            finalScream.volume = 0f;
+            finalScream.Stop();
+            finalScream.volume = screamVolume;
         }
 
         // Pause in complete silence.
